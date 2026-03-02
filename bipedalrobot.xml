@@ -1,0 +1,102 @@
+<mujoco model="ascento_biped">
+  <compiler angle="degree"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="Euler"/>
+  
+  <default>
+    <joint armature="0.02" limited="true"/>
+    <geom friction="1.5 0.005 0.0001" condim="4"/>
+    <motor ctrllimited="true"/>
+  </default>
+  
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.15 0.20 0.25" rgb2="0.25 0.30 0.35" width="512" height="512"/>
+    <material name="grid_mat" texture="grid" texrepeat="10 10" reflectance="0.1"/>
+    <material name="body_mat" rgba="0.2 0.2 0.2 1"/>
+    <material name="upper_mat" rgba="0.9 0.55 0.1 1"/>
+    <material name="lower_mat" rgba="0.3 0.3 0.3 1"/>
+    <material name="wheel_mat" rgba="0.15 0.15 0.15 1"/>
+    <material name="hub_mat" rgba="0.9 0.55 0.1 1"/>
+  </asset>
+  
+  <worldbody>
+    <light directional="true" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" pos="0 0 5" dir="0 0.3 -1"/>
+    <geom name="floor" type="plane" size="30 30 0.1" material="grid_mat"/>
+    
+    <!--
+      torso 높이 계산 (knee=-45도, hip=0도 기준):
+      hip offset: 0.04m (아래)
+      upper leg: 0.12m (수직)
+      lower leg: 0.12 * cos(45) = 0.0849m (수직 성분)
+      wheel radius: 0.055m
+      총 = 0.04 + 0.12 + 0.0849 + 0.055 = 0.30m
+    -->
+<body name="torso" pos="0 0 0.46">
+      <!-- freejoint 주석 = torso 고정 (테스트용) -->
+      <freejoint name="root"/>
+      <site name="torso_imu" pos="0 0 0"/>
+      <geom name="torso_box" type="box" size="0.08 0.07 0.06" mass="2.0" material="body_mat"/>
+      
+      <!-- LEFT LEG -->
+      <body name="left_upper" pos="0 0.08 -0.04">
+        <joint name="left_hip" type="hinge" axis="0 1 0" range="-80 80" damping="2.0" armature="0.08"/>
+        <geom type="capsule" fromto="0 0 0 0 0 -0.12" size="0.022" mass="0.2" material="upper_mat"/>
+        
+        <body name="left_lower" pos="0 0 -0.12">
+          <joint name="left_knee" type="hinge" axis="0 1 0" range="-130 -5" damping="2.0" armature="0.04"/>
+          <geom type="capsule" fromto="0 0 0 0 0 -0.12" size="0.018" mass="0.15" material="lower_mat"/>
+          
+          <body name="left_wheel_body" pos="0 0 -0.12">
+            <joint name="left_wheel" type="hinge" axis="0 1 0" damping="0.01" limited="false"/>
+            <geom name="lw" type="cylinder" size="0.055 0.025" euler="90 0 0"
+                  mass="0.25" material="wheel_mat" friction="2.0 0.005 0.0001"/>
+            <geom type="cylinder" size="0.018 0.026" euler="90 0 0" mass="0.01" material="hub_mat"/>
+          </body>
+        </body>
+      </body>
+      
+      <!-- RIGHT LEG -->
+      <body name="right_upper" pos="0 -0.08 -0.04">
+        <joint name="right_hip" type="hinge" axis="0 1 0" range="-80 80" damping="2.0" armature="0.08"/>
+        <geom type="capsule" fromto="0 0 0 0 0 -0.12" size="0.022" mass="0.2" material="upper_mat"/>
+        
+        <body name="right_lower" pos="0 0 -0.12">
+          <joint name="right_knee" type="hinge" axis="0 1 0" range="-130 -5" damping="2.0" armature="0.04"/>
+          <geom type="capsule" fromto="0 0 0 0 0 -0.12" size="0.018" mass="0.15" material="lower_mat"/>
+          
+          <body name="right_wheel_body" pos="0 0 -0.12">
+            <joint name="right_wheel" type="hinge" axis="0 1 0" damping="0.01" limited="false"/>
+            <geom name="rw" type="cylinder" size="0.055 0.025" euler="90 0 0"
+                  mass="0.25" material="wheel_mat" friction="2.0 0.005 0.0001"/>
+            <geom type="cylinder" size="0.018 0.026" euler="90 0 0" mass="0.01" material="hub_mat"/>
+          </body>
+        </body>
+      </body>
+
+    </body>
+  </worldbody>
+  <equality>
+    <!-- hip이 +1도 → knee가 -1도 (평행사변형: 반대방향 1:1) -->
+    <joint joint1="left_hip" joint2="left_knee" polycoef="0 -1 0 0 0"/>
+    <joint joint1="right_hip" joint2="right_knee" polycoef="0 -1 0 0 0"/>
+  </equality>
+  
+  <actuator>
+    <position name="left_hip_pos" joint="left_hip" kp="50" ctrlrange="-80 80"/>
+    <!-- <position name="left_knee_pos" joint="left_knee" kp="50" ctrlrange="-130 -5"/> -->
+    <position name="right_hip_pos" joint="right_hip" kp="50" ctrlrange="-80 80"/>
+    <!-- <position name="right_knee_pos" joint="right_knee" kp="50" ctrlrange="-130 -5"/> -->
+    <motor name="left_wheel_torque" joint="left_wheel" gear="1" ctrlrange="-8 8"/>
+    <motor name="right_wheel_torque" joint="right_wheel" gear="1" ctrlrange="-8 8"/>
+  </actuator>
+  
+  <sensor>
+    <gyro name="torso_gyro" site="torso_imu"/>
+    <accelerometer name="torso_accel" site="torso_imu"/>
+  </sensor>
+<keyframe>
+  <!-- qpos: left_hip, left_knee, left_wheel, right_hip, right_knee, right_wheel -->
+  <key name="home"
+       qpos="30 -30 0  30 -30 0"
+       ctrl="30 30 0 0"/>
+</keyframe>
+</mujoco>
